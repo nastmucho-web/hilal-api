@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import date
+from hijri_converter import convert
 
 app = FastAPI()
 
-# السماح للـ Flutter بالاتصال
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,3 +24,33 @@ def predict(moon_age: float, moon_alt: float):
         return {"prediction": "Visible"}
     else:
         return {"prediction": "Not Visible"}
+
+@app.get("/ramadan")
+def ramadan():
+
+    today = date.today()
+    hijri = convert.Gregorian(today.year, today.month, today.day).to_hijri()
+
+    return {
+        "ramadan": f"Ramadan {hijri.year}"
+    }
+
+@app.get("/eid_fitr")
+def eid_fitr():
+
+    today = date.today()
+    hijri = convert.Gregorian(today.year, today.month, today.day).to_hijri()
+
+    return {
+        "eid_fitr": f"Eid Al-Fitr {hijri.year}"
+    }
+
+@app.get("/eid_adha")
+def eid_adha():
+
+    today = date.today()
+    hijri = convert.Gregorian(today.year, today.month, today.day).to_hijri()
+
+    return {
+        "eid_adha": f"Eid Al-Adha {hijri.year}"
+    }
