@@ -110,9 +110,8 @@ def sunset_time(lat, lon, date):
         if e == 0:
             return t
 
-
 # =========================
-# New Moon (once per year)
+# New Moons
 # =========================
 
 def new_moons(year):
@@ -131,7 +130,6 @@ def new_moons(year):
             nm.append(t.utc_datetime())
 
     return nm
-
 
 # =========================
 # Hilal visibility
@@ -166,7 +164,6 @@ def hilal_visible(lat,lon,date,newmoon):
         return True
 
     return False
-
 
 # =========================
 # Find month start
@@ -210,52 +207,69 @@ def find_month(lat,lon,hijri_month,year):
 
     return {"error":"month not found"}
 
+# =========================
+# Test multiple locations per country
+# =========================
+
+def find_month_country(lat,lon,month,year):
+
+    offsets = [
+        (0,0),
+        (1.5,0),
+        (-1.5,0),
+        (0,1.5),
+        (0,-1.5)
+    ]
+
+    for dlat,dlon in offsets:
+
+        result = find_month(lat+dlat,lon+dlon,month,year)
+
+        if "gregorian" in result:
+            return result
+
+    return {"error":"month not found"}
 
 # =========================
 # RAMADAN
 # =========================
 
 @app.get("/ramadan/world")
-
 def ramadan_world(year:int):
 
     results = {}
 
     for country,(lat,lon) in countries.items():
-        results[country] = find_month(lat,lon,9,year)
+        results[country] = find_month_country(lat,lon,9,year)
 
     return results
-
 
 # =========================
 # EID FITR
 # =========================
 
 @app.get("/eid_fitr/world")
-
 def eid_fitr_world(year:int):
 
     results = {}
 
     for country,(lat,lon) in countries.items():
-        results[country] = find_month(lat,lon,10,year)
+        results[country] = find_month_country(lat,lon,10,year)
 
     return results
-
 
 # =========================
 # EID ADHA
 # =========================
 
 @app.get("/eid_adha/world")
-
 def eid_adha_world(year:int):
 
     results = {}
 
     for country,(lat,lon) in countries.items():
 
-        start = find_month(lat,lon,12,year)
+        start = find_month_country(lat,lon,12,year)
 
         if "gregorian" in start:
 
@@ -274,13 +288,11 @@ def eid_adha_world(year:int):
 
     return results
 
-
 # =========================
 # ROOT
 # =========================
 
 @app.get("/")
-
 def home():
 
     return {
