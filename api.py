@@ -17,6 +17,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/")
+def home():
+    return {
+        "message": "Global Hilal API running",
+        "ramadan_endpoint": "/ramadan/world",
+        "eid_fitr_endpoint": "/eid_fitr/world",
+        "eid_adha_endpoint": "/eid_adha/world"
+    }
+    
+    
+
 # =========================
 # Astronomical data
 # =========================
