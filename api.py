@@ -16,12 +16,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# تحميل البيانات الفلكية مرة واحدة
+# تحميل البيانات الفلكية مرة واحدة فقط
 ts = load.timescale()
-eph = load_file('data/de421.bsp')
+eph = load_file("data/de421.bsp")
 
-earth = eph['earth']
-moon = eph['moon']
+earth = eph["earth"]
+moon = eph["moon"]
 
 
 @app.get("/")
@@ -45,7 +45,7 @@ def ramadan():
     hijri = convert.Gregorian(today.year, today.month, today.day).to_hijri()
 
     return {
-        "ramadan": f"Ramadan {hijri.year}"
+        "ramadan_year": hijri.year
     }
 
 
@@ -56,7 +56,7 @@ def eid_fitr():
     hijri = convert.Gregorian(today.year, today.month, today.day).to_hijri()
 
     return {
-        "eid_fitr": f"Eid Al-Fitr {hijri.year}"
+        "eid_fitr_year": hijri.year
     }
 
 
@@ -67,19 +67,19 @@ def eid_adha():
     hijri = convert.Gregorian(today.year, today.month, today.day).to_hijri()
 
     return {
-        "eid_adha": f"Eid Al-Adha {hijri.year}"
+        "eid_adha_year": hijri.year
     }
 
 
 @app.get("/hilal/morocco")
 def hilal_morocco():
 
-    # موقع العيون (أول مدينة يظهر فيها الهلال في المغرب)
-    location = earth + wgs84.latlon(27.1536, -13.2033)
+    # مدينة العيون (أول مكان يظهر فيه الهلال في المغرب)
+    observer = wgs84.latlon(27.1536, -13.2033)
 
     t = ts.now()
 
-    astrometric = location.at(t).observe(moon)
+    astrometric = (earth + observer).at(t).observe(moon)
     alt, az, distance = astrometric.apparent().altaz()
 
     moon_altitude = alt.degrees
@@ -89,6 +89,6 @@ def hilal_morocco():
     return {
         "country": "Morocco",
         "city": "Laayoune",
-        "moon_altitude": moon_altitude,
+        "moon_altitude": round(moon_altitude, 2),
         "visible": visible
     }
