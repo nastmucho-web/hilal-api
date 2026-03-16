@@ -135,14 +135,17 @@ def new_moons(year):
 # Hilal visibility
 # =========================
 
-def hilal_visible(lat,lon,date,newmoon):
+def hilal_visible(lat, lon, date, newmoon):
 
-    observer = wgs84.latlon(lat,lon)
+    observer = wgs84.latlon(lat, lon)
 
-    sunset = sunset_time(lat,lon,date)
+    sunset = sunset_time(lat, lon, date)
 
-    moon_astrometric = (earth+observer).at(sunset).observe(moon)
-    sun_astrometric = (earth+observer).at(sunset).observe(sun)
+    if sunset.utc_datetime() < newmoon:
+        return False
+
+    moon_astrometric = (earth + observer).at(sunset).observe(moon)
+    sun_astrometric = (earth + observer).at(sunset).observe(sun)
 
     moon_app = moon_astrometric.apparent()
     sun_app = sun_astrometric.apparent()
@@ -154,17 +157,14 @@ def hilal_visible(lat,lon,date,newmoon):
 
     arcv = moon_alt - sun_alt
 
-    w = 0.5 * elong
+    W = 0.2725 * elong
 
-    V = arcv - (-0.1018*w**3 + 0.7319*w**2 - 6.3226*w + 11.8371)
+    V = arcv - (-0.1018*W**3 + 0.7319*W**2 - 6.3226*W + 7.1651)
 
-    moon_age = (sunset.utc_datetime() - newmoon).total_seconds()/3600
-
-    if moon_alt > 1.5 and elong > 6.5 and moon_age > 16 and V > -0.05:
+    if V > 0:
         return True
 
     return False
-
 # =========================
 # Find month start
 # =========================
