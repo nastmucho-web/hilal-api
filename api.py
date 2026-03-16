@@ -147,7 +147,7 @@ def find_month(lat, lon, hijri_month):
     today = datetime.utcnow().date()
 
     t0 = ts.utc(today.year, today.month, today.day)
-    t1 = ts.utc(today.year + 1, 1, 1)
+    t1 = ts.utc(today.year + 2, 1, 1)
 
     f = almanac.moon_phases(eph)
 
@@ -176,7 +176,7 @@ def find_month(lat, lon, hijri_month):
                         start.day
                     ).to_hijri()
 
-                    # تحقق من الشهر المطلوب
+                    # إذا كان الشهر المطلوب
                     if h.month == hijri_month:
 
                         return {
@@ -185,10 +185,9 @@ def find_month(lat, lon, hijri_month):
                             "hijri": f"{h.day} {h.month_name()} {h.year}"
                         }
 
-    return {
-        "error": "month not found"
-    }
+                    break
 
+    return {"error": "month not found"}
 # =========================
 # RAMADAN
 # =========================
