@@ -156,25 +156,19 @@ def hilal_visible(lat, lon, date):
 
 def find_month(lat, lon, hijri_month, gregorian_year):
 
-    # تقريب السنة الهجرية
-    hijri_year = convert.Gregorian(gregorian_year, 1, 1).to_hijri().year
+    hijri_year = convert.Gregorian(gregorian_year,1,1).to_hijri().year
 
     approx = convert.Hijri(hijri_year, hijri_month, 1).to_gregorian()
 
-    approx_date = datetime(
-        approx.year,
-        approx.month,
-        approx.day
-    ).date()
+    approx_date = datetime(approx.year, approx.month, approx.day).date()
 
-    # البحث حول التاريخ التقريبي
-    for offset in range(-3, 5):
+    # نبحث 10 أيام حول التاريخ التقريبي
+    for offset in range(-5,10):
 
         test_day = approx_date + timedelta(days=offset)
 
         if hilal_visible(lat, lon, test_day):
 
-            # اليوم التالي هو أول الشهر
             start = test_day + timedelta(days=1)
 
             weekday = days[start.weekday()]
