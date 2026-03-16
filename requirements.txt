@@ -1,12 +1,8 @@
-hijri_converter
-matplotlib
-numpy
-pandas
-streamlit
-tqdm
-scikit-learn
-xlsxwriter
-uvicorn
 fastapi
+uvicorn
 skyfield
+jplephem
+sgp4
+hijri-converter
 pytz
+numpy
