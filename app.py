@@ -6,7 +6,7 @@ import pandas as pd
 import io
 
 st.set_page_config(
-    page_title="Manazel Project",
+    page_title="Moroccan Hilal Checker",
     page_icon="🇲🇦",
     layout="wide"
 )
@@ -61,7 +61,7 @@ def generate_predictions_for_year(hijri_year):
     return pd.DataFrame(predictions)
 
 def main():
-    st.title("🇲🇦 Manazel Project")
+    st.title("Moroccan Hilal Checker")
     st.markdown( "مشروع منازل لتحديد بداية الشهر الهجري في المغرب انطلاقا من حتمالية رؤية الهلال. لا تنسونا من خالص دعائكم")
     st.markdown(
         """
