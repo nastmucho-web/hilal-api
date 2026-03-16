@@ -135,14 +135,30 @@ def hilal_visible(lat, lon, date):
     # الفرق العمودي بين الشمس والقمر
     arcv = moon_alt - sun_alt
 
-    # تقدير عرض الهلال
+    # عرض الهلال التقريبي
     w = elong * 0.2725
 
-    # معيار Yallop المبسط
-    q = arcv - (11.8371 + 6.3226*w - 0.7319*w**2 + 0.1018*w**3)
+    # معيار Odeh / Yallop
+    V = arcv - (-0.1018*w**3 + 0.7319*w**2 - 6.3226*w + 11.8371)
 
-    # شرط إضافي: القمر فوق الأفق
-    if moon_alt > 2 and elong > 7 and q > -0.05:
+    # حساب عمر الهلال
+    f = almanac.moon_phases(eph)
+    t0 = sunset - 1
+    t1 = sunset
+
+    times, phases = almanac.find_discrete(t0, t1, f)
+
+    moon_age = None
+
+    for t, phase in zip(times, phases):
+        if phase == 0:
+            moon_age = (sunset.tt - t.tt) * 24
+
+    if moon_age is None:
+        moon_age = 24
+
+    # شروط إضافية لتحسين الدقة
+    if moon_alt > 2 and elong > 7 and moon_age > 18 and V > -0.014:
         return True
 
     return False
