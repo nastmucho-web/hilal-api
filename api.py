@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
 from hijri_converter import convert
 
-from skyfield.api import load, Topos
+from skyfield.api import load, load_file, Topos
 
 app = FastAPI()
 
@@ -18,7 +18,7 @@ app.add_middleware(
 
 # تحميل البيانات الفلكية مرة واحدة
 ts = load.timescale()
-eph = load('data/de421.bsp')
+eph = load_file('data/de421.bsp')
 
 earth = eph['earth']
 moon = eph['moon']
