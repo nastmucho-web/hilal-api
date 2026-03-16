@@ -127,24 +127,22 @@ def hilal_visible(lat, lon, date):
     moon_app = moon_astrometric.apparent()
     sun_app = sun_astrometric.apparent()
 
-    alt, az, dist = moon_app.altaz()
-
-    moon_alt = alt.degrees
+    moon_alt = moon_app.altaz()[0].degrees
+    sun_alt = sun_app.altaz()[0].degrees
 
     elong = moon_app.separation_from(sun_app).degrees
 
-    # فرق الارتفاع بين الشمس والقمر
-    sun_alt = sun_app.altaz()[0].degrees
-
+    # الفرق العمودي بين الشمس والقمر
     arcv = moon_alt - sun_alt
 
     # تقدير عرض الهلال
     w = elong * 0.2725
 
-    # معيار Yallop
+    # معيار Yallop المبسط
     q = arcv - (11.8371 + 6.3226*w - 0.7319*w**2 + 0.1018*w**3)
 
-    if q > -0.014:
+    # شرط إضافي: القمر فوق الأفق
+    if moon_alt > 2 and elong > 7 and q > -0.05:
         return True
 
     return False
