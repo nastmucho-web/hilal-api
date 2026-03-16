@@ -7,7 +7,7 @@ from hijri_converter import convert
 from skyfield.api import load, load_file, wgs84
 from skyfield import almanac
 
-app = FastAPI()
+app = FastAPI(title="Global Hilal API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,7 +33,6 @@ sun = eph["sun"]
 # =========================
 
 countries = {
-
 "Morocco": (34.0209,-6.8416),
 "Algeria": (36.7538,3.0588),
 "Tunisia": (36.8065,10.1815),
@@ -98,18 +97,18 @@ days = [
 # sunset
 # =========================
 
-def sunset_time(lat,lon,date):
+def sunset_time(lat, lon, date):
 
-    observer = wgs84.latlon(lat,lon)
+    observer = wgs84.latlon(lat, lon)
 
-    t0 = ts.utc(date.year,date.month,date.day)
-    t1 = ts.utc(date.year,date.month,date.day+1)
+    t0 = ts.utc(date.year, date.month, date.day)
+    t1 = ts.utc(date.year, date.month, date.day) + 1
 
-    f = almanac.sunrise_sunset(eph,observer)
+    f = almanac.sunrise_sunset(eph, observer)
 
-    times,events = almanac.find_discrete(t0,t1,f)
+    times, events = almanac.find_discrete(t0, t1, f)
 
-    for t,e in zip(times,events):
+    for t, e in zip(times, events):
         if e == 0:
             return t
 
@@ -117,16 +116,16 @@ def sunset_time(lat,lon,date):
 # hilal visibility
 # =========================
 
-def hilal_visible(lat,lon,date):
+def hilal_visible(lat, lon, date):
 
-    observer = wgs84.latlon(lat,lon)
+    observer = wgs84.latlon(lat, lon)
 
-    sunset = sunset_time(lat,lon,date)
+    sunset = sunset_time(lat, lon, date)
 
-    moon_astrometric = (earth+observer).at(sunset).observe(moon)
-    sun_astrometric = (earth+observer).at(sunset).observe(sun)
+    moon_astrometric = (earth + observer).at(sunset).observe(moon)
+    sun_astrometric = (earth + observer).at(sunset).observe(sun)
 
-    alt,az,d = moon_astrometric.apparent().altaz()
+    alt, az, d = moon_astrometric.apparent().altaz()
 
     moon_alt = alt.degrees
     elong = moon_astrometric.separation_from(sun_astrometric).degrees
@@ -142,12 +141,13 @@ def hilal_visible(lat,lon,date):
 # =========================
 # calculate month start
 # =========================
-def find_month(lat, lon, hijri_month):
 
-    today = datetime.utcnow().date()
+def find_month(lat, lon, hijri_month, year):
 
-    t0 = ts.utc(today.year, today.month, today.day)
-    t1 = ts.utc(today.year + 2, 1, 1)
+    start_date = datetime(year, 1, 1).date()
+
+    t0 = ts.utc(start_date.year, start_date.month, start_date.day)
+    t1 = ts.utc(year + 1, 1, 1)
 
     f = almanac.moon_phases(eph)
 
@@ -155,11 +155,10 @@ def find_month(lat, lon, hijri_month):
 
     for t, phase in zip(times, phases):
 
-        if phase == 0:  # New Moon
+        if phase == 0:
 
             new_moon_date = t.utc_datetime().date()
 
-            # نبحث 4 أيام بعد الاقتران
             for i in range(4):
 
                 test_day = new_moon_date + timedelta(days=i)
@@ -176,7 +175,6 @@ def find_month(lat, lon, hijri_month):
                         start.day
                     ).to_hijri()
 
-                    # إذا كان الشهر المطلوب
                     if h.month == hijri_month:
 
                         return {
@@ -188,18 +186,19 @@ def find_month(lat, lon, hijri_month):
                     break
 
     return {"error": "month not found"}
+
 # =========================
-# RAMADAN
+# RAMADAN WORLD
 # =========================
 
 @app.get("/ramadan/world")
 
-def ramadan_world():
+def ramadan_world(year: int):
 
     results = {}
 
-    for country,(lat,lon) in countries.items():
-        results[country] = find_month(lat,lon,9)
+    for country, (lat, lon) in countries.items():
+        results[country] = find_month(lat, lon, 9, year)
 
     return results
 
@@ -209,12 +208,12 @@ def ramadan_world():
 
 @app.get("/eid_fitr/world")
 
-def eid_fitr_world():
+def eid_fitr_world(year: int):
 
     results = {}
 
-    for country,(lat,lon) in countries.items():
-        results[country] = find_month(lat,lon,10)
+    for country, (lat, lon) in countries.items():
+        results[country] = find_month(lat, lon, 10, year)
 
     return results
 
@@ -224,13 +223,13 @@ def eid_fitr_world():
 
 @app.get("/eid_adha/world")
 
-def eid_adha_world():
+def eid_adha_world(year: int):
 
     results = {}
 
-    for country,(lat,lon) in countries.items():
+    for country, (lat, lon) in countries.items():
 
-        start = find_month(lat,lon,12)
+        start = find_month(lat, lon, 12, year)
 
         if "gregorian" in start:
 
@@ -251,20 +250,20 @@ def eid_adha_world():
     return results
 
 # =========================
-# COUNTRY QUERY
+# RAMADAN COUNTRY
 # =========================
 
 @app.get("/ramadan/country")
 
-def ramadan_country(name:str):
+def ramadan_country(name: str, year: int):
 
     if name not in countries:
-        return {"error":"country not found"}
+        return {"error": "country not found"}
 
-    lat,lon = countries[name]
+    lat, lon = countries[name]
 
     return {
-        name: find_month(lat,lon,9)
+        name: find_month(lat, lon, 9, year)
     }
 
 # =========================
@@ -272,14 +271,15 @@ def ramadan_country(name:str):
 # =========================
 
 @app.get("/")
+
 def home():
 
     return {
-        "API":"Global Hilal API",
-        "endpoints":[
-            "/ramadan/world",
-            "/eid_fitr/world",
-            "/eid_adha/world",
-            "/ramadan/country?name=Morocco"
-        ]
+        "API": "Global Hilal API",
+        "usage": {
+            "ramadan_world": "/ramadan/world?year=2027",
+            "eid_fitr_world": "/eid_fitr/world?year=2027",
+            "eid_adha_world": "/eid_adha/world?year=2027",
+            "ramadan_country": "/ramadan/country?name=Morocco&year=2027"
+        }
     }
