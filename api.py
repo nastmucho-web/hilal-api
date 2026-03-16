@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import date
+
+from datetime import date, datetime
 from hijri_converter import convert
+
+from skyfield.api import load, Topos
+
 
 app = FastAPI()
 
@@ -13,9 +17,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def home():
     return {"message": "Hilal API running"}
+
 
 @app.get("/predict")
 def predict(moon_age: float, moon_alt: float):
@@ -24,6 +30,7 @@ def predict(moon_age: float, moon_alt: float):
         return {"prediction": "Visible"}
     else:
         return {"prediction": "Not Visible"}
+
 
 @app.get("/ramadan")
 def ramadan():
@@ -35,6 +42,7 @@ def ramadan():
         "ramadan": f"Ramadan {hijri.year}"
     }
 
+
 @app.get("/eid_fitr")
 def eid_fitr():
 
@@ -45,6 +53,7 @@ def eid_fitr():
         "eid_fitr": f"Eid Al-Fitr {hijri.year}"
     }
 
+
 @app.get("/eid_adha")
 def eid_adha():
 
@@ -53,4 +62,33 @@ def eid_adha():
 
     return {
         "eid_adha": f"Eid Al-Adha {hijri.year}"
+    }
+
+
+@app.get("/hilal/morocco")
+def hilal_morocco():
+
+    ts = load.timescale()
+    planets = load('de421.bsp')
+
+    earth = planets['earth']
+    moon = planets['moon']
+
+    # مدينة العيون (المرجع المغربي)
+    location = earth + Topos(latitude_degrees=27.1536, longitude_degrees=-13.2033)
+
+    t = ts.now()
+
+    astrometric = location.at(t).observe(moon)
+    alt, az, distance = astrometric.apparent().altaz()
+
+    moon_altitude = alt.degrees
+
+    visible = moon_altitude > 5
+
+    return {
+        "country": "Morocco",
+        "city": "Laayoune",
+        "moon_altitude": moon_altitude,
+        "visible": visible
     }
