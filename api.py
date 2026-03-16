@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 # =========================
-# Astronomical data
+# Astronomy
 # =========================
 
 ts = load.timescale()
@@ -33,7 +33,6 @@ sun = eph["sun"]
 # =========================
 
 countries = {
-
 "Morocco": (34.0209,-6.8416),
 "Algeria": (36.7538,3.0588),
 "Tunisia": (36.8065,10.1815),
@@ -91,24 +90,20 @@ countries = {
 
 }
 
-# =========================
-# weekday names
-# =========================
-
 days = [
 "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"
 ]
 
 # =========================
-# sunset calculation
+# sunset
 # =========================
 
-def sunset_time(lat,lon):
+def sunset_time(lat,lon,date):
 
     observer = wgs84.latlon(lat,lon)
 
-    t0 = ts.now()
-    t1 = ts.utc(t0.utc_datetime().year,t0.utc_datetime().month,t0.utc_datetime().day+1)
+    t0 = ts.utc(date.year,date.month,date.day)
+    t1 = ts.utc(date.year,date.month,date.day+1)
 
     f = almanac.sunrise_sunset(eph,observer)
 
@@ -123,11 +118,11 @@ def sunset_time(lat,lon):
 # hilal visibility
 # =========================
 
-def hilal_visible(lat,lon):
+def hilal_visible(lat,lon,date):
 
     observer = wgs84.latlon(lat,lon)
 
-    sunset = sunset_time(lat,lon)
+    sunset = sunset_time(lat,lon,date)
 
     moon_astrometric = (earth+observer).at(sunset).observe(moon)
     sun_astrometric = (earth+observer).at(sunset).observe(sun)
@@ -135,10 +130,7 @@ def hilal_visible(lat,lon):
     alt,az,d = moon_astrometric.apparent().altaz()
 
     moon_alt = alt.degrees
-
     elong = moon_astrometric.separation_from(sun_astrometric).degrees
-
-    # Danjon limit
 
     if elong < 7:
         return False
@@ -152,29 +144,32 @@ def hilal_visible(lat,lon):
 # calculate start
 # =========================
 
-def start_date(lat,lon):
+def find_ramadan(lat,lon):
 
     today = datetime.utcnow().date()
 
-    visible = hilal_visible(lat,lon)
+    for i in range(30):
 
-    if visible:
-        start = today + timedelta(days=1)
-    else:
-        start = today + timedelta(days=2)
+        test_day = today + timedelta(days=i)
 
-    weekday = days[start.weekday()]
+        if hilal_visible(lat,lon,test_day):
 
-    h = convert.Gregorian(start.year,start.month,start.day).to_hijri()
+            start = test_day + timedelta(days=1)
 
-    return {
-        "weekday": weekday,
-        "gregorian": start.isoformat(),
-        "hijri": f"{h.day} {h.month_name()} {h.year}"
-    }
+            weekday = days[start.weekday()]
+
+            h = convert.Gregorian(start.year,start.month,start.day).to_hijri()
+
+            if h.month == 9 and h.day == 1:
+
+                return {
+                    "weekday": weekday,
+                    "gregorian": start.isoformat(),
+                    "hijri": f"{h.day} Ramadan {h.year}"
+                }
 
 # =========================
-# RAMADAN
+# API
 # =========================
 
 @app.get("/ramadan/world")
@@ -185,50 +180,6 @@ def ramadan_world():
 
     for country,(lat,lon) in countries.items():
 
-        data = start_date(lat,lon)
-
-        results[country] = {
-            "Ramadan starts": data
-        }
-
-    return results
-
-# =========================
-# EID AL FITR
-# =========================
-
-@app.get("/eid_fitr/world")
-
-def eid_fitr_world():
-
-    results = {}
-
-    for country,(lat,lon) in countries.items():
-
-        data = start_date(lat,lon)
-
-        results[country] = {
-            "Eid Al Fitr": data
-        }
-
-    return results
-
-# =========================
-# EID AL ADHA
-# =========================
-
-@app.get("/eid_adha/world")
-
-def eid_adha_world():
-
-    results = {}
-
-    for country,(lat,lon) in countries.items():
-
-        data = start_date(lat,lon)
-
-        results[country] = {
-            "Eid Al Adha": data
-        }
+        results[country] = find_ramadan(lat,lon)
 
     return results
