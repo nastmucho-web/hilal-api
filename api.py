@@ -84,7 +84,7 @@ def hilal_morocco():
 
     moon_altitude = alt.degrees
 
-    visible = moon_altitude > 5
+    visible = bool(moon_altitude > 5)
 
     return {
         "country": "Morocco",
