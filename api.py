@@ -136,14 +136,15 @@ def hilal_visible(lat, lon, date):
     arcv = moon_alt - sun_alt
 
     # عرض الهلال التقريبي
-    w = elong * 0.2725
+    w = 0.5 * elong
 
-    # معيار Odeh / Yallop
+    # معيار Yallop / Odeh
     V = arcv - (-0.1018*w**3 + 0.7319*w**2 - 6.3226*w + 11.8371)
 
     # حساب عمر الهلال
     f = almanac.moon_phases(eph)
-    t0 = sunset - 1
+
+    t0 = sunset - 3
     t1 = sunset
 
     times, phases = almanac.find_discrete(t0, t1, f)
@@ -157,8 +158,7 @@ def hilal_visible(lat, lon, date):
     if moon_age is None:
         moon_age = 24
 
-    # شروط إضافية لتحسين الدقة
-    if moon_alt > 2 and elong > 7 and moon_age > 18 and V > -0.014:
+    if moon_alt > 1.5 and elong > 6.5 and moon_age > 16 and V > -0.05:
         return True
 
     return False
@@ -176,8 +176,7 @@ def find_month(lat, lon, hijri_month, gregorian_year):
 
     approx_date = datetime(approx.year, approx.month, approx.day).date()
 
-    # نبحث 10 أيام حول التاريخ التقريبي
-    for offset in range(-5,10):
+    for offset in range(-7,12):
 
         test_day = approx_date + timedelta(days=offset)
 
