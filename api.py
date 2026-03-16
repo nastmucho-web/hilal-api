@@ -142,10 +142,7 @@ def hilal_visible(lat,lon,date):
 # =========================
 # calculate month start
 # =========================
-
 def find_month(lat, lon, hijri_month):
-
-    observer = wgs84.latlon(lat, lon)
 
     today = datetime.utcnow().date()
 
@@ -162,7 +159,8 @@ def find_month(lat, lon, hijri_month):
 
             new_moon_date = t.utc_datetime().date()
 
-            for i in range(3):
+            # نبحث 4 أيام بعد الاقتران
+            for i in range(4):
 
                 test_day = new_moon_date + timedelta(days=i)
 
@@ -170,15 +168,16 @@ def find_month(lat, lon, hijri_month):
 
                     start = test_day + timedelta(days=1)
 
+                    weekday = days[start.weekday()]
+
                     h = convert.Gregorian(
                         start.year,
                         start.month,
                         start.day
                     ).to_hijri()
 
-                    if h.month == hijri_month and h.day == 1:
-
-                        weekday = days[start.weekday()]
+                    # تحقق من الشهر المطلوب
+                    if h.month == hijri_month:
 
                         return {
                             "weekday": weekday,
@@ -186,7 +185,9 @@ def find_month(lat, lon, hijri_month):
                             "hijri": f"{h.day} {h.month_name()} {h.year}"
                         }
 
-    return {"error": "month not found"}
+    return {
+        "error": "month not found"
+    }
 
 # =========================
 # RAMADAN
