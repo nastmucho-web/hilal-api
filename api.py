@@ -143,33 +143,50 @@ def hilal_visible(lat,lon,date):
 # calculate month start
 # =========================
 
-def find_month(lat,lon,hijri_month):
+def find_month(lat, lon, hijri_month):
+
+    observer = wgs84.latlon(lat, lon)
 
     today = datetime.utcnow().date()
 
-    for i in range(120):
+    t0 = ts.utc(today.year, today.month, today.day)
+    t1 = ts.utc(today.year + 1, 1, 1)
 
-        test_day = today + timedelta(days=i)
+    f = almanac.moon_phases(eph)
 
-        if hilal_visible(lat,lon,test_day):
+    times, phases = almanac.find_discrete(t0, t1, f)
 
-            start = test_day + timedelta(days=1)
+    for t, phase in zip(times, phases):
 
-            h = convert.Gregorian(start.year,start.month,start.day).to_hijri()
+        if phase == 0:  # New Moon
 
-            if h.month == hijri_month and h.day == 1:
+            new_moon_date = t.utc_datetime().date()
 
-                weekday = days[start.weekday()]
+            for i in range(3):
 
-                return {
-                    "weekday": weekday,
-                    "gregorian": start.isoformat(),
-                    "hijri": f"{h.day} {h.month_name()} {h.year}"
-                }
+                test_day = new_moon_date + timedelta(days=i)
 
-    return {
-        "error":"month not found"
-    }
+                if hilal_visible(lat, lon, test_day):
+
+                    start = test_day + timedelta(days=1)
+
+                    h = convert.Gregorian(
+                        start.year,
+                        start.month,
+                        start.day
+                    ).to_hijri()
+
+                    if h.month == hijri_month and h.day == 1:
+
+                        weekday = days[start.weekday()]
+
+                        return {
+                            "weekday": weekday,
+                            "gregorian": start.isoformat(),
+                            "hijri": f"{h.day} {h.month_name()} {h.year}"
+                        }
+
+    return {"error": "month not found"}
 
 # =========================
 # RAMADAN
