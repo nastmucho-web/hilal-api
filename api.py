@@ -141,30 +141,47 @@ def hilal_visible(lat, lon, date, newmoon):
 
     sunset = sunset_time(lat, lon, date)
 
-    if sunset.utc_datetime() < newmoon:
+    # لا يمكن رؤية الهلال قبل الاقتران
+    if sunset.utc_datetime() <= newmoon:
         return False
 
+    # حساب مواقع الشمس والقمر
     moon_astrometric = (earth + observer).at(sunset).observe(moon)
     sun_astrometric = (earth + observer).at(sunset).observe(sun)
 
     moon_app = moon_astrometric.apparent()
     sun_app = sun_astrometric.apparent()
 
-    moon_alt = moon_app.altaz()[0].degrees
+    alt, az, distance = moon_app.altaz()
+
+    moon_alt = alt.degrees
     sun_alt = sun_app.altaz()[0].degrees
 
+    # الاستطالة
     elong = moon_app.separation_from(sun_app).degrees
 
+    # الفرق العمودي بين الشمس والقمر
     arcv = moon_alt - sun_alt
 
+    # عرض الهلال التقريبي
     W = 0.2725 * elong
 
-    V = arcv - (-0.1018*W**3 + 0.7319*W**2 - 6.3226*W + 7.1651)
+    # معادلة Odeh (المستخدمة في Manazel)
+    V = arcv - (-0.1018 * W**3 + 0.7319 * W**2 - 6.3226 * W + 7.1651)
 
-    if V > 0:
+    # شروط إضافية لتحسين الدقة
+    if moon_alt < 2:
+        return False
+
+    if elong < 6:
+        return False
+
+    # معيار الرؤية
+    if V >= 0:
         return True
 
     return False
+    
 # =========================
 # Find month start
 # =========================
@@ -183,7 +200,7 @@ def find_month(lat,lon,hijri_month,year):
 
         if abs((nm.date()-approx_date).days) < 20:
 
-            for offset in range(0,5):
+            for offset in range(1,5):
 
                 d = nm.date()+timedelta(days=offset)
 
