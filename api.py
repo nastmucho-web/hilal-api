@@ -18,7 +18,7 @@ app.add_middleware(
 
 # تحميل البيانات الفلكية مرة واحدة
 ts = load.timescale()
-eph = load('de421.bsp')
+eph = load('data/de421.bsp')
 
 earth = eph['earth']
 moon = eph['moon']
