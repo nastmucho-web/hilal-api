@@ -92,37 +92,59 @@ countries = {
 days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 
 # =========================
-# Sunset calculation
+# Sunset
 # =========================
 
 def sunset_time(lat, lon, date):
 
     observer = wgs84.latlon(lat, lon)
 
-    t0 = ts.utc(date.year, date.month, date.day)
-    t1 = ts.utc(date.year, date.month, date.day) + 1
+    t0 = ts.utc(date.year,date.month,date.day)
+    t1 = ts.utc(date.year,date.month,date.day+1)
 
-    f = almanac.sunrise_sunset(eph, observer)
+    f = almanac.sunrise_sunset(eph,observer)
 
-    times, events = almanac.find_discrete(t0, t1, f)
+    times,events = almanac.find_discrete(t0,t1,f)
 
-    for t, e in zip(times, events):
+    for t,e in zip(times,events):
         if e == 0:
             return t
+
+
+# =========================
+# New Moon (once per year)
+# =========================
+
+def new_moons(year):
+
+    t0 = ts.utc(year-1,1,1)
+    t1 = ts.utc(year+1,1,1)
+
+    f = almanac.moon_phases(eph)
+
+    times,phases = almanac.find_discrete(t0,t1,f)
+
+    nm = []
+
+    for t,p in zip(times,phases):
+        if p == 0:
+            nm.append(t.utc_datetime())
+
+    return nm
 
 
 # =========================
 # Hilal visibility
 # =========================
 
-def hilal_visible(lat, lon, date):
+def hilal_visible(lat,lon,date,newmoon):
 
-    observer = wgs84.latlon(lat, lon)
+    observer = wgs84.latlon(lat,lon)
 
-    sunset = sunset_time(lat, lon, date)
+    sunset = sunset_time(lat,lon,date)
 
-    moon_astrometric = (earth + observer).at(sunset).observe(moon)
-    sun_astrometric = (earth + observer).at(sunset).observe(sun)
+    moon_astrometric = (earth+observer).at(sunset).observe(moon)
+    sun_astrometric = (earth+observer).at(sunset).observe(sun)
 
     moon_app = moon_astrometric.apparent()
     sun_app = sun_astrometric.apparent()
@@ -132,31 +154,13 @@ def hilal_visible(lat, lon, date):
 
     elong = moon_app.separation_from(sun_app).degrees
 
-    # الفرق العمودي بين الشمس والقمر
     arcv = moon_alt - sun_alt
 
-    # عرض الهلال التقريبي
     w = 0.5 * elong
 
-    # معيار Yallop / Odeh
     V = arcv - (-0.1018*w**3 + 0.7319*w**2 - 6.3226*w + 11.8371)
 
-    # حساب عمر الهلال
-    f = almanac.moon_phases(eph)
-
-    t0 = sunset - 3
-    t1 = sunset
-
-    times, phases = almanac.find_discrete(t0, t1, f)
-
-    moon_age = None
-
-    for t, phase in zip(times, phases):
-        if phase == 0:
-            moon_age = (sunset.tt - t.tt) * 24
-
-    if moon_age is None:
-        moon_age = 24
+    moon_age = (sunset.utc_datetime() - newmoon).total_seconds()/3600
 
     if moon_alt > 1.5 and elong > 6.5 and moon_age > 16 and V > -0.05:
         return True
@@ -168,44 +172,51 @@ def hilal_visible(lat, lon, date):
 # Find month start
 # =========================
 
-def find_month(lat, lon, hijri_month, gregorian_year):
+def find_month(lat,lon,hijri_month,year):
 
-    hijri_year = convert.Gregorian(gregorian_year,1,1).to_hijri().year
+    hijri_year = convert.Gregorian(year,1,1).to_hijri().year
 
-    approx = convert.Hijri(hijri_year, hijri_month, 1).to_gregorian()
+    approx = convert.Hijri(hijri_year,hijri_month,1).to_gregorian()
 
-    approx_date = datetime(approx.year, approx.month, approx.day).date()
+    approx_date = datetime(approx.year,approx.month,approx.day).date()
 
-    for offset in range(-7,12):
+    moons = new_moons(year)
 
-        test_day = approx_date + timedelta(days=offset)
+    for nm in moons:
 
-        if hilal_visible(lat, lon, test_day):
+        if abs((nm.date()-approx_date).days) < 20:
 
-            start = test_day + timedelta(days=1)
+            for offset in range(0,5):
 
-            weekday = days[start.weekday()]
+                d = nm.date()+timedelta(days=offset)
 
-            month_name = convert.Hijri(
-                hijri_year,
-                hijri_month,
-                1
-            ).month_name()
+                if hilal_visible(lat,lon,d,nm):
 
-            return {
-                "weekday": weekday,
-                "gregorian": start.isoformat(),
-                "hijri": f"1 {month_name} {hijri_year}"
-            }
+                    start = d+timedelta(days=1)
 
-    return {"error": "month not found"}
+                    weekday = days[start.weekday()]
+
+                    month_name = convert.Hijri(
+                        hijri_year,
+                        hijri_month,
+                        1
+                    ).month_name()
+
+                    return {
+                        "weekday":weekday,
+                        "gregorian":start.isoformat(),
+                        "hijri":f"1 {month_name} {hijri_year}"
+                    }
+
+    return {"error":"month not found"}
 
 
 # =========================
-# RAMADAN WORLD
+# RAMADAN
 # =========================
 
 @app.get("/ramadan/world")
+
 def ramadan_world(year:int):
 
     results = {}
@@ -217,10 +228,11 @@ def ramadan_world(year:int):
 
 
 # =========================
-# EID AL FITR
+# EID FITR
 # =========================
 
 @app.get("/eid_fitr/world")
+
 def eid_fitr_world(year:int):
 
     results = {}
@@ -232,10 +244,11 @@ def eid_fitr_world(year:int):
 
 
 # =========================
-# EID AL ADHA
+# EID ADHA
 # =========================
 
 @app.get("/eid_adha/world")
+
 def eid_adha_world(year:int):
 
     results = {}
@@ -251,33 +264,15 @@ def eid_adha_world(year:int):
             weekday = days[g.weekday()]
 
             results[country] = {
-                "weekday": weekday,
-                "gregorian": g.date().isoformat(),
-                "hijri": "10 Dhul Hijjah"
+                "weekday":weekday,
+                "gregorian":g.date().isoformat(),
+                "hijri":"10 Dhul Hijjah"
             }
 
         else:
-
             results[country] = start
 
     return results
-
-
-# =========================
-# RAMADAN COUNTRY
-# =========================
-
-@app.get("/ramadan/country")
-def ramadan_country(name:str, year:int):
-
-    if name not in countries:
-        return {"error":"country not found"}
-
-    lat,lon = countries[name]
-
-    return {
-        name: find_month(lat,lon,9,year)
-    }
 
 
 # =========================
@@ -285,6 +280,7 @@ def ramadan_country(name:str, year:int):
 # =========================
 
 @app.get("/")
+
 def home():
 
     return {
@@ -292,7 +288,6 @@ def home():
         "usage":{
             "ramadan_world":"/ramadan/world?year=2026",
             "eid_fitr_world":"/eid_fitr/world?year=2026",
-            "eid_adha_world":"/eid_adha/world?year=2026",
-            "ramadan_country":"/ramadan/country?name=Morocco&year=2026"
+            "eid_adha_world":"/eid_adha/world?year=2026"
         }
     }
