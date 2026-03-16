@@ -129,8 +129,24 @@ def hilal_visible(lat, lon, date):
     moon_alt = alt.degrees
     elong = moon_astrometric.separation_from(sun_astrometric).degrees
 
-    # معيار رؤية بسيط
-    if moon_alt > 5 and elong > 10:
+    # عمر الهلال
+    f = almanac.moon_phases(eph)
+    t0 = sunset - 1
+    t1 = sunset
+
+    times, phases = almanac.find_discrete(t0, t1, f)
+
+    moon_age_hours = None
+
+    for t, phase in zip(times, phases):
+        if phase == 0:
+            moon_age_hours = (sunset.tt - t.tt) * 24
+
+    if moon_age_hours is None:
+        moon_age_hours = 24
+
+    # معيار رؤية تقريبي (قريب من Odeh)
+    if moon_alt > 4 and elong > 8 and moon_age_hours > 16:
         return True
 
     return False
