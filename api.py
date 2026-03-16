@@ -89,12 +89,10 @@ countries = {
 "Kosovo": (42.6629,21.1655)
 }
 
-days = [
-"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"
-]
+days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 
 # =========================
-# sunset
+# Sunset calculation
 # =========================
 
 def sunset_time(lat, lon, date):
@@ -112,8 +110,9 @@ def sunset_time(lat, lon, date):
         if e == 0:
             return t
 
+
 # =========================
-# hilal visibility
+# Hilal visibility
 # =========================
 
 def hilal_visible(lat, lon, date):
@@ -130,106 +129,96 @@ def hilal_visible(lat, lon, date):
     moon_alt = alt.degrees
     elong = moon_astrometric.separation_from(sun_astrometric).degrees
 
-    if elong < 7:
-        return False
-
+    # معيار رؤية بسيط
     if moon_alt > 5 and elong > 10:
         return True
 
     return False
 
+
 # =========================
-# calculate month start
+# Find month start
 # =========================
 
-def find_month(lat, lon, hijri_month, year):
+def find_month(lat, lon, hijri_month, gregorian_year):
 
-    start_date = datetime(year, 1, 1).date()
+    # تحويل السنة الميلادية إلى سنة هجرية تقريبية
+    hijri_year = convert.Gregorian(gregorian_year,1,1).to_hijri().year
 
-    t0 = ts.utc(start_date.year, start_date.month, start_date.day)
-    t1 = ts.utc(year + 1, 1, 1)
+    approx = convert.Hijri(hijri_year, hijri_month, 1).to_gregorian()
 
-    f = almanac.moon_phases(eph)
+    approx_date = datetime(approx.year, approx.month, approx.day).date()
 
-    times, phases = almanac.find_discrete(t0, t1, f)
+    # البحث حول التاريخ التقريبي
+    for offset in range(-3,5):
 
-    for t, phase in zip(times, phases):
+        test_day = approx_date + timedelta(days=offset)
 
-        if phase == 0:
+        if hilal_visible(lat, lon, test_day):
 
-            new_moon_date = t.utc_datetime().date()
+            start = test_day + timedelta(days=1)
 
-            for i in range(4):
+            weekday = days[start.weekday()]
 
-                test_day = new_moon_date + timedelta(days=i)
+            h = convert.Gregorian(
+                start.year,
+                start.month,
+                start.day
+            ).to_hijri()
 
-                if hilal_visible(lat, lon, test_day):
+            if h.month == hijri_month:
 
-                    start = test_day + timedelta(days=1)
-
-                    weekday = days[start.weekday()]
-
-                    h = convert.Gregorian(
-                        start.year,
-                        start.month,
-                        start.day
-                    ).to_hijri()
-
-                    if h.month == hijri_month:
-
-                        return {
-                            "weekday": weekday,
-                            "gregorian": start.isoformat(),
-                            "hijri": f"{h.day} {h.month_name()} {h.year}"
-                        }
-
-                    break
+                return {
+                    "weekday": weekday,
+                    "gregorian": start.isoformat(),
+                    "hijri": f"{h.day} {h.month_name()} {h.year}"
+                }
 
     return {"error": "month not found"}
+
 
 # =========================
 # RAMADAN WORLD
 # =========================
 
 @app.get("/ramadan/world")
-
-def ramadan_world(year: int):
+def ramadan_world(year:int):
 
     results = {}
 
-    for country, (lat, lon) in countries.items():
-        results[country] = find_month(lat, lon, 9, year)
+    for country,(lat,lon) in countries.items():
+        results[country] = find_month(lat,lon,9,year)
 
     return results
+
 
 # =========================
 # EID AL FITR
 # =========================
 
 @app.get("/eid_fitr/world")
-
-def eid_fitr_world(year: int):
+def eid_fitr_world(year:int):
 
     results = {}
 
-    for country, (lat, lon) in countries.items():
-        results[country] = find_month(lat, lon, 10, year)
+    for country,(lat,lon) in countries.items():
+        results[country] = find_month(lat,lon,10,year)
 
     return results
+
 
 # =========================
 # EID AL ADHA
 # =========================
 
 @app.get("/eid_adha/world")
-
-def eid_adha_world(year: int):
+def eid_adha_world(year:int):
 
     results = {}
 
-    for country, (lat, lon) in countries.items():
+    for country,(lat,lon) in countries.items():
 
-        start = find_month(lat, lon, 12, year)
+        start = find_month(lat,lon,12,year)
 
         if "gregorian" in start:
 
@@ -249,37 +238,37 @@ def eid_adha_world(year: int):
 
     return results
 
+
 # =========================
 # RAMADAN COUNTRY
 # =========================
 
 @app.get("/ramadan/country")
-
-def ramadan_country(name: str, year: int):
+def ramadan_country(name:str, year:int):
 
     if name not in countries:
-        return {"error": "country not found"}
+        return {"error":"country not found"}
 
-    lat, lon = countries[name]
+    lat,lon = countries[name]
 
     return {
-        name: find_month(lat, lon, 9, year)
+        name: find_month(lat,lon,9,year)
     }
+
 
 # =========================
 # ROOT
 # =========================
 
 @app.get("/")
-
 def home():
 
     return {
-        "API": "Global Hilal API",
-        "usage": {
-            "ramadan_world": "/ramadan/world?year=2027",
-            "eid_fitr_world": "/eid_fitr/world?year=2027",
-            "eid_adha_world": "/eid_adha/world?year=2027",
-            "ramadan_country": "/ramadan/country?name=Morocco&year=2027"
+        "API":"Global Hilal API",
+        "usage":{
+            "ramadan_world":"/ramadan/world?year=2026",
+            "eid_fitr_world":"/eid_fitr/world?year=2026",
+            "eid_adha_world":"/eid_adha/world?year=2026",
+            "ramadan_country":"/ramadan/country?name=Morocco&year=2026"
         }
     }
