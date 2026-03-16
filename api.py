@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from hijri_converter import convert
 
 from skyfield.api import load, load_file, wgs84
-from skyfield.almanac import moon_phase, find_discrete, sunset_sunrise
+from skyfield.almanac import moon_phase, find_discrete
 
 app = FastAPI()
 
