@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from datetime import date
+from datetime import date, timedelta
 from hijri_converter import convert
 
 from skyfield.api import load, load_file, wgs84
-from skyfield.almanac import moon_phase
+from skyfield.almanac import moon_phase, find_discrete, sunset_sunrise
 
 app = FastAPI()
 
@@ -17,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# تحميل البيانات الفلكية مرة واحدة
+# تحميل البيانات الفلكية
 ts = load.timescale()
 eph = load_file("data/de421.bsp")
 
@@ -25,11 +25,17 @@ earth = eph["earth"]
 moon = eph["moon"]
 sun = eph["sun"]
 
+# =============================
+# الصفحة الرئيسية
+# =============================
 
 @app.get("/")
 def home():
     return {"message": "Hilal API running"}
 
+# =============================
+# نموذج بسيط للتنبؤ
+# =============================
 
 @app.get("/predict")
 def predict(moon_age: float, moon_alt: float):
@@ -39,6 +45,9 @@ def predict(moon_age: float, moon_alt: float):
     else:
         return {"prediction": "Not Visible"}
 
+# =============================
+# رمضان والعيدين
+# =============================
 
 @app.get("/ramadan")
 def ramadan():
@@ -72,9 +81,8 @@ def eid_adha():
         "eid_adha_year": hijri.year
     }
 
-
 # =============================
-# محرك حساب رؤية الهلال
+# محرك حساب الهلال
 # =============================
 
 def calculate_hilal(lat, lon):
@@ -83,31 +91,35 @@ def calculate_hilal(lat, lon):
 
     t = ts.now()
 
-    astrometric_moon = (earth + observer).at(t).observe(moon)
-    alt_moon, az, distance = astrometric_moon.apparent().altaz()
+    # القمر
+    moon_astrometric = (earth + observer).at(t).observe(moon)
+    alt_moon, az, distance = moon_astrometric.apparent().altaz()
 
-    astrometric_sun = (earth + observer).at(t).observe(sun)
-    alt_sun, az, distance = astrometric_sun.apparent().altaz()
+    # الشمس
+    sun_astrometric = (earth + observer).at(t).observe(sun)
+    alt_sun, az, distance = sun_astrometric.apparent().altaz()
 
     moon_alt = float(alt_moon.degrees)
     sun_alt = float(alt_sun.degrees)
 
-    elongation = astrometric_moon.separation_from(astrometric_sun).degrees
-
+    elongation = moon_astrometric.separation_from(sun_astrometric).degrees
     phase = moon_phase(eph, t).degrees
 
-    # معيار دانجون
     danjon = bool(elongation > 7)
 
-    # تصنيف الرؤية التقريبي
+    # تصنيف الرؤية
     if elongation > 15 and moon_alt > 10:
         visibility = "Easily visible"
+
     elif elongation > 12 and moon_alt > 8:
         visibility = "Visible"
+
     elif elongation > 10:
         visibility = "Optical aid needed"
+
     elif elongation > 7:
         visibility = "Very difficult"
+
     else:
         visibility = "Not visible"
 
@@ -119,7 +131,6 @@ def calculate_hilal(lat, lon):
         "danjon_limit": danjon,
         "visibility": visibility
     }
-
 
 # =============================
 # الهلال في المغرب
@@ -135,7 +146,6 @@ def hilal_morocco():
         "city": "Laayoune",
         **result
     }
-
 
 # =============================
 # الهلال في العالم الإسلامي
@@ -220,3 +230,18 @@ def hilal_world():
         results[country] = calculate_hilal(lat, lon)
 
     return results
+
+# =============================
+# أي موقع في العالم
+# =============================
+
+@app.get("/hilal/location")
+def hilal_location(lat: float, lon: float):
+
+    result = calculate_hilal(lat, lon)
+
+    return {
+        "latitude": lat,
+        "longitude": lon,
+        **result
+    }
