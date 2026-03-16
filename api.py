@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
 from hijri_converter import convert
 
-from skyfield.api import load, load_file, Topos
+from skyfield.api import load, load_file, wgs84
 
 app = FastAPI()
 
@@ -74,7 +74,8 @@ def eid_adha():
 @app.get("/hilal/morocco")
 def hilal_morocco():
 
-    location = earth + Topos(latitude_degrees=27.1536, longitude_degrees=-13.2033)
+    # موقع العيون (أول مدينة يظهر فيها الهلال في المغرب)
+    location = earth + wgs84.latlon(27.1536, -13.2033)
 
     t = ts.now()
 
