@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from hijri_converter import convert
 
 from skyfield.api import load, load_file, wgs84
@@ -16,18 +16,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/")
-def home():
-    return {
-        "message": "Global Hilal API running",
-        "ramadan_endpoint": "/ramadan/world",
-        "eid_fitr_endpoint": "/eid_fitr/world",
-        "eid_adha_endpoint": "/eid_adha/world"
-    }
-    
-    
 
 # =========================
 # Astronomical data
@@ -46,7 +34,7 @@ sun = eph["sun"]
 
 countries = {
 
-"Morocco": (27.1536,-13.2033),
+"Morocco": (34.0209,-6.8416),
 "Algeria": (36.7538,3.0588),
 "Tunisia": (36.8065,10.1815),
 "Libya": (32.8872,13.1913),
@@ -69,17 +57,10 @@ countries = {
 "Iraq": (33.3152,44.3661),
 
 "Turkey": (41.0082,28.9784),
-"Azerbaijan": (40.4093,49.8671),
-
 "Iran": (35.6892,51.3890),
-"Kazakhstan": (51.1605,71.4704),
-"Uzbekistan": (41.2995,69.2401),
-"Turkmenistan": (37.9601,58.3261),
-"Kyrgyzstan": (42.8746,74.5698),
-"Tajikistan": (38.5598,68.7870),
 
-"Afghanistan": (34.5553,69.2075),
 "Pakistan": (33.6844,73.0479),
+"Afghanistan": (34.5553,69.2075),
 "Bangladesh": (23.8103,90.4125),
 "Maldives": (4.1755,73.5093),
 
@@ -90,7 +71,6 @@ countries = {
 "Somalia": (2.0469,45.3182),
 "Djibouti": (11.8251,42.5903),
 "Eritrea": (15.3229,38.9251),
-"Ethiopia": (9.1450,40.4897),
 "Chad": (12.1348,15.0557),
 "Niger": (13.5116,2.1254),
 "Mali": (12.6392,-8.0029),
@@ -104,7 +84,6 @@ countries = {
 "Tanzania": (-6.1630,35.7516),
 "Comoros": (-11.7172,43.2473),
 "Mozambique": (-25.9692,32.5732),
-"Gabon": (0.4162,9.4673),
 
 "Albania": (41.3275,19.8187),
 "Bosnia": (43.8563,18.4131),
@@ -113,7 +92,7 @@ countries = {
 }
 
 # =========================
-# weekdays
+# weekday names
 # =========================
 
 days = [
@@ -121,7 +100,7 @@ days = [
 ]
 
 # =========================
-# sunset
+# sunset calculation
 # =========================
 
 def sunset_time(lat,lon):
@@ -156,7 +135,10 @@ def hilal_visible(lat,lon):
     alt,az,d = moon_astrometric.apparent().altaz()
 
     moon_alt = alt.degrees
+
     elong = moon_astrometric.separation_from(sun_astrometric).degrees
+
+    # Danjon limit
 
     if elong < 7:
         return False
@@ -167,62 +149,86 @@ def hilal_visible(lat,lon):
     return False
 
 # =========================
-# calculate event
+# calculate start
 # =========================
 
-def calculate_event(h_month,h_day,name):
+def start_date(lat,lon):
+
+    today = datetime.utcnow().date()
+
+    visible = hilal_visible(lat,lon)
+
+    if visible:
+        start = today + timedelta(days=1)
+    else:
+        start = today + timedelta(days=2)
+
+    weekday = days[start.weekday()]
+
+    h = convert.Gregorian(start.year,start.month,start.day).to_hijri()
+
+    return {
+        "weekday": weekday,
+        "gregorian": start.isoformat(),
+        "hijri": f"{h.day} {h.month_name()} {h.year}"
+    }
+
+# =========================
+# RAMADAN
+# =========================
+
+@app.get("/ramadan/world")
+
+def ramadan_world():
 
     results = {}
-    today = date.today()
 
     for country,(lat,lon) in countries.items():
 
-        visible = hilal_visible(lat,lon)
-
-        if visible:
-            start = today + timedelta(days=1)
-        else:
-            start = today + timedelta(days=2)
-
-        weekday = days[start.weekday()]
-
-        h = convert.Gregorian(start.year,start.month,start.day).to_hijri()
+        data = start_date(lat,lon)
 
         results[country] = {
-            "event": name,
-            "weekday": weekday,
-            "gregorian": start.isoformat(),
-            "hijri": f"{h.day}-{h.month}-{h.year}"
+            "Ramadan starts": data
         }
 
     return results
 
 # =========================
-# Ramadan
-# =========================
-
-@app.get("/ramadan/world")
-
-def ramadan():
-
-    return calculate_event(9,1,"Ramadan")
-
-# =========================
-# Eid Fitr
+# EID AL FITR
 # =========================
 
 @app.get("/eid_fitr/world")
 
-def eid_fitr():
+def eid_fitr_world():
 
-    return calculate_event(10,1,"Eid al-Fitr")
+    results = {}
+
+    for country,(lat,lon) in countries.items():
+
+        data = start_date(lat,lon)
+
+        results[country] = {
+            "Eid Al Fitr": data
+        }
+
+    return results
 
 # =========================
-# Eid Adha
+# EID AL ADHA
 # =========================
 
 @app.get("/eid_adha/world")
 
-def eid_adha():
+def eid_adha_world():
 
-    return calculate_event(12,10,"Eid al-Adha")
+    results = {}
+
+    for country,(lat,lon) in countries.items():
+
+        data = start_date(lat,lon)
+
+        results[country] = {
+            "Eid Al Adha": data
+        }
+
+    return results
